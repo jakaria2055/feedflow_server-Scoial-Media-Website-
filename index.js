@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import "dotenv/config";
+import userRouter from "./routes/userRouter.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express());
 app.use(cookieParser());
+
+//ROUTERS
+app.use("/api/v1/user", userRouter); 
 
 app.get("/", (req, res) => {
   res.send("Hello FeedFlow Server");
