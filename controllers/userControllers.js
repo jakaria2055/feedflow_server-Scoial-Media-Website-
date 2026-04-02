@@ -172,9 +172,10 @@ export const allUser = async (req, res) => {
 export const uploadProfileImage = async (req, res) => {
   try {
     const userId = req.user._id;
+
+    // multer-storage-cloudinary already uploads file to cloudinary
     const profileImage = req.file?.path;
 
-    // Check if file exists
     if (!profileImage) {
       return res.status(400).json({
         success: false,
@@ -182,29 +183,23 @@ export const uploadProfileImage = async (req, res) => {
       });
     }
 
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(profileImage, {
-      folder: "profile_images",
-    });
-
-    // Update user profile with Cloudinary URL
-    const updateUserProfile = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profileImage: result.secure_url },
+      { profileImage },
       { new: true }
     ).select("-password");
 
     return res.status(200).json({
       success: true,
       message: "Profile image uploaded successfully.",
-      user: updateUserProfile,
+      user: updatedUser,
     });
   } catch (error) {
     console.error("Error uploading profile image:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Internal server error.",
+      message: error.message || "Internal server error.",
     });
   }
 };
-

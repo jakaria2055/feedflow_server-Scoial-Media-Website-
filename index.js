@@ -5,6 +5,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import "dotenv/config";
 import userRouter from "./routes/userRouter.js";
+import postRouter from "./routes/postRouter.js";
+import reelRouter from "./routes/reelRouter.js";
+import storyRouter from "./routes/storyRoutes.js";
+import connectDB from "./config/connectDB.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,11 +22,17 @@ app.use(cookieParser());
 
 //ROUTERS
 app.use("/api/v1/user", userRouter); 
+app.use("/api/v1/post", postRouter); 
+app.use("/api/v1/reel", reelRouter); 
+app.use("/api/v1/story", storyRouter); 
 
 app.get("/", (req, res) => {
   res.send("Hello FeedFlow Server");
 });
 
 app.listen(PORT, () => {
+  connectDB()
   console.log(`Server is running on port : ${PORT}`);
 });
+
+//2:15
