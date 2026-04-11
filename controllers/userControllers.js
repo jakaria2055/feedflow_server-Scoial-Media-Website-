@@ -150,7 +150,9 @@ export const profileUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching profile:", error);
-    return res.status(500).json({ success: false, message: "Internal server error." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
   }
 };
 
@@ -164,7 +166,9 @@ export const allUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching all users:", error);
-    return res.status(500).json({ success: false, message: "Internal server error." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
   }
 };
 
@@ -186,7 +190,7 @@ export const uploadProfileImage = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profileImage },
-      { new: true }
+      { new: true },
     ).select("-password");
 
     return res.status(200).json({
@@ -203,3 +207,234 @@ export const uploadProfileImage = async (req, res) => {
     });
   }
 };
+
+// Get User By Id
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id)
+      .select("-password")
+      .populate({
+        path: "posts",
+        options: { sort: { createdAt: -1 } },
+        populate: [
+          { path: "user", select: "username profileImage" },
+          { path: "comments.user", select: "username profileImage" },
+        ],
+      })
+      .populate({
+        path: "reels",
+        options: { sort: { createdAt: -1 } },
+        populate: [
+          { path: "user", select: "username profileImage" },
+          { path: "comments.user", select: "username profileImage" },
+        ],
+      })
+      .populate({
+        path: "savedPosts",
+        options: { sort: { createdAt: -1 } },
+        populate: [
+          { path: "user", select: "username profileImage" },
+          { path: "comments.user", select: "username profileImage" },
+        ],
+      });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User fetched successfully",
+      user,
+      posts: user.posts,
+      reels: user.reels,
+      savedPosts: user.savedPosts, // ✅ fixed naming
+    });
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching user",
+      error: error.message,
+    });
+  }
+};
+
+
+// Follow User
+export const followUser = async (req, res) => {
+  try {
+    const userId = req.user?._id; // who follows
+    const targetId = req.params.id; // whom to follow
+
+    if (userId.toString() === targetId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot follow yourself",
+      });
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetId);
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found",
+      });
+    }
+
+    // Add to following/followers if not already present
+    if (!user.following.includes(targetId)) {
+      user.following.push(targetId);
+    }
+    if (!targetUser.followers.includes(userId)) {
+      targetUser.followers.push(userId); // ✅ fixed
+    }
+
+    await user.save();
+    await targetUser.save();
+
+    // Return updated lists
+    return res.status(200).json({
+      success: true,
+      message: "User followed successfully",
+      following: user.following,
+      followers: targetUser.followers,
+    });
+  } catch (error) {
+    console.error("Error following user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while following user",
+      error: error.message,
+    });
+  }
+};
+
+
+// Unfollow User
+export const unFollowUser = async (req, res) => {
+  try {
+    const userId = req.user?._id; // who unfollows
+    const targetId = req.params.id; // whom to unfollow
+
+    if (userId.toString() === targetId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot unfollow yourself",
+      });
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetId);
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found",
+      });
+    }
+
+    // Remove targetId from user's following list
+    user.following = user.following.filter(
+      (id) => id.toString() !== targetId.toString()
+    );
+
+    // Remove userId from targetUser's followers list
+    targetUser.followers = targetUser.followers.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+
+    await user.save();
+    await targetUser.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User unfollowed successfully",
+      following: user.following,
+      followers: targetUser.followers,
+    });
+  } catch (error) {
+    console.error("Error unfollowing user:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while unfollowing user",
+      error: error.message,
+    });
+  }
+};
+
+
+// Get Followers of a User
+export const getFollowUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select("followers");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Followers fetched successfully",
+      followers: user.followers,
+    });
+  } catch (error) {
+    console.error("Error fetching followers:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching followers",
+      error: error.message,
+    });
+  }
+};
+
+
+// Get Following of a User
+export const getFollowing = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).populate(
+      "following",
+      "username profileImage"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Following list fetched successfully",
+      following: user.following,
+    });
+  } catch (error) {
+    console.error("Error fetching following list:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching following list",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+

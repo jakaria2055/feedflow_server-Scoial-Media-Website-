@@ -1,10 +1,14 @@
 import { Router } from "express";
 import {
   allUser,
+  followUser,
+  getFollowing,
+  getFollowUser,
   loginUser,
   logoutUser,
   profileUser,
   registerUser,
+  unFollowUser,
   uploadProfileImage,
 } from "../controllers/userControllers.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -23,5 +27,12 @@ userRouter.post(
   uploadProfileImage,
 );
 userRouter.get("/all", allUser);
+
+//Follow Routes
+userRouter.get("/:id", authMiddleware, getUserById);
+userRouter.get("/:targetId/follow", authMiddleware, followUser);
+userRouter.get("/:targetId/unfollow", authMiddleware, unFollowUser);
+userRouter.get("/:id/followers", authMiddleware, getFollowUser);
+userRouter.get("/:id/following", authMiddleware, getFollowing);
 
 export default userRouter;
