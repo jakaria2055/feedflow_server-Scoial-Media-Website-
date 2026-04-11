@@ -162,7 +162,7 @@ export const toggleLikePost = async (req, res) => {
         success: true,
         message: "Post liked successfully",
         likesCount: post.likes.length,
-        likes: post.likes,
+        post: post,
       });
     } else {
       post.likes.splice(index, 1);
@@ -171,7 +171,7 @@ export const toggleLikePost = async (req, res) => {
         success: true,
         message: "Post unliked successfully",
         likesCount: post.likes.length,
-        likes: post.likes,
+        post: post,
       });
     }
   } catch (error) {
@@ -234,6 +234,63 @@ export const addCommentPost = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error while adding comment",
+      error: error.message,
+    });
+  }
+};
+
+// Toggle Saved Post
+export const toggleSavedPost = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { postId } = req.params;
+
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Clean out any null/undefined values first
+    user.savedPosts = user.savedPosts.filter(Boolean);
+
+    // Check if user already saved the post
+    const alreadySaved = user.savedPosts.some(
+      (id) => id.toString() === postId.toString(),
+    );
+
+    if (alreadySaved) {
+      //  remove postId
+      user.savedPosts = user.savedPosts.filter(
+        (id) => id.toString() !== postId.toString(),
+      );
+      await user.save();
+      return res.status(200).json({
+        success: true,
+        message: "Post unsaved successfully",
+        savedPostCount: user.savedPosts.length,
+        savedPosts: user.savedPosts,
+      });
+    } else {
+      //  add postId
+      user.savedPosts.push(postId);
+      await user.save();
+      return res.status(200).json({
+        success: true,
+        message: "Post saved successfully",
+        savedPostCount: user.savedPosts.length,
+        savedPosts: user.savedPosts,
+      });
+    }
+  } catch (error) {
+    console.error("Error toggling Saved:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while toggling saved",
       error: error.message,
     });
   }

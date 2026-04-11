@@ -49,17 +49,67 @@ export const createStory = async (req, res) => {
 export const getAllStories = async (req, res) => {
   try {
     const now = new Date(); // current time
+    const userId = req.user?._id;
 
-    const stories = await Story.find({ expireAt: { $gt: now } })
+    const stories = await Story.find({
+      expireAt: { $gt: now },
+      user: { $ne: userId },
+    })
       .populate("user", "username profileImage")
-      .populate("comments.user", "username profileImage")
+      .populate({ path: "comments.user", select: "username profileImage" })
+      .populate("viewers", "username profileImage")
       .sort({ createdAt: -1 });
+
+    const storiesByUser = stories?.reduce((acc, story) => {
+      const storyUserId = story.user._id; // use story owner's ID
+      if (!acc[storyUserId]) {
+        acc[storyUserId] = {
+          user: story.user,
+          stories: [],
+          hasUnViewed: false,
+        };
+      }
+
+      const hasView = story?.viewers?.some(
+        (view) => view?._id.toString() === userId.toString(),
+      );
+      if (!hasView) {
+        acc[storyUserId].hasUnViewed = true;
+      }
+      acc[storyUserId].stories.push(story);
+      return acc;
+    }, {});
+
+    const userStories = await Story.find({
+      user: userId,
+      expireAt: { $gt: now },
+    })
+      .populate("user", "username profileImage")
+      .populate({ path: "comments.user", select: "username profileImage" })
+      .populate("viewers", "username profileImage")
+      .sort({ createdAt: -1 });
+
+    if (userStories.length > 0)
+      storiesByUser[userId] = {
+        user: req.user,
+        stories: userStories,
+        hasUnViewed: false,
+        isOwn: true,
+      };
+
+    const storyArray = Object.values(storiesByUser);
+
+    const sortedStories = storyArray.sort((a, b) => {
+      if (a.isOwn) return -1;
+      if (b.isOwn) return 1;
+      return 0;
+    });
 
     return res.status(200).json({
       success: true,
       message: "Stories retrieved successfully",
-      count: stories.length,
-      stories,
+      count: sortedStories.length,
+      stories: sortedStories,
     });
   } catch (error) {
     console.error("Error fetching stories:", error);
