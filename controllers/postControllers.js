@@ -142,8 +142,9 @@ export const deletePostById = async (req, res) => {
 // Toggle Like on Post
 export const toggleLikePost = async (req, res) => {
   try {
+    const { id } = req.params;
     const userId = req.user._id;
-    const post = await Post.findById(req.params.id);
+    let post = await Post.findById(id);
 
     // Check if post exists
     if (!post) {
@@ -158,6 +159,13 @@ export const toggleLikePost = async (req, res) => {
     if (index === -1) {
       post.likes.push(userId);
       await post.save();
+
+      post = await Post.findById(id)
+        .populate("user", "username profileImage")
+        .populate({
+          path: "comments.user",
+          select: "username profileImage",
+        });
       return res.status(200).json({
         success: true,
         message: "Post liked successfully",
@@ -167,6 +175,12 @@ export const toggleLikePost = async (req, res) => {
     } else {
       post.likes.splice(index, 1);
       await post.save();
+      post = await Post.findById(id)
+        .populate("user", "username profileImage")
+        .populate({
+          path: "comments.user",
+          select: "username profileImage",
+        });
       return res.status(200).json({
         success: true,
         message: "Post unliked successfully",
@@ -244,7 +258,6 @@ export const toggleSavedPost = async (req, res) => {
   try {
     const userId = req.user._id;
     const { postId } = req.params;
-
 
     const user = await User.findById(userId);
 
