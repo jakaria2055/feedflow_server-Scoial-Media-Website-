@@ -265,12 +265,11 @@ export const getUserById = async (req, res) => {
   }
 };
 
-
 // Follow User
 export const followUser = async (req, res) => {
   try {
     const userId = req.user?._id; // who follows
-    const targetId = req.params.id; // whom to follow
+    const { targetId } = req.body; // whom to follow
 
     if (userId.toString() === targetId.toString()) {
       return res.status(400).json({
@@ -317,12 +316,11 @@ export const followUser = async (req, res) => {
   }
 };
 
-
 // Unfollow User
 export const unFollowUser = async (req, res) => {
   try {
     const userId = req.user?._id; // who unfollows
-    const targetId = req.params.id; // whom to unfollow
+    const { targetId } = req.body; // whom to unfollow
 
     if (userId.toString() === targetId.toString()) {
       return res.status(400).json({
@@ -343,12 +341,12 @@ export const unFollowUser = async (req, res) => {
 
     // Remove targetId from user's following list
     user.following = user.following.filter(
-      (id) => id.toString() !== targetId.toString()
+      (id) => id.toString() !== targetId.toString(),
     );
 
     // Remove userId from targetUser's followers list
     targetUser.followers = targetUser.followers.filter(
-      (id) => id.toString() !== userId.toString()
+      (id) => id.toString() !== userId.toString(),
     );
 
     await user.save();
@@ -369,7 +367,6 @@ export const unFollowUser = async (req, res) => {
     });
   }
 };
-
 
 // Get Followers of a User
 export const getFollowUser = async (req, res) => {
@@ -400,7 +397,6 @@ export const getFollowUser = async (req, res) => {
   }
 };
 
-
 // Get Following of a User
 export const getFollowing = async (req, res) => {
   try {
@@ -408,7 +404,7 @@ export const getFollowing = async (req, res) => {
 
     const user = await User.findById(id).populate(
       "following",
-      "username profileImage"
+      "username profileImage",
     );
 
     if (!user) {
@@ -433,8 +429,28 @@ export const getFollowing = async (req, res) => {
   }
 };
 
+//get Suggested User
+export const getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUserId = req.user?._id;
+    const excludeIds = [currentUserId, ...(req.user?.following || [])];
 
+    const suggestedUsers = await User.find({
+      _id: { $nin: excludeIds }
+    })
+      .select("username profileImage")
+      .limit(10);
 
-
-
+    res.status(200).json({
+      success: true,
+      message: "Suggested users fetched successfully",
+      users: suggestedUsers,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch suggested users",
+    });
+  }
+};
 

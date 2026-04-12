@@ -4,6 +4,8 @@ import {
   followUser,
   getFollowing,
   getFollowUser,
+  getSuggestedUsers,
+  getUserById,
   loginUser,
   logoutUser,
   profileUser,
@@ -30,9 +32,12 @@ userRouter.get("/all", allUser);
 
 //Follow Routes
 userRouter.get("/:id", authMiddleware, getUserById);
-userRouter.get("/:targetId/follow", authMiddleware, followUser);
-userRouter.get("/:targetId/unfollow", authMiddleware, unFollowUser);
+userRouter.post("/follow", authMiddleware, followUser);
+userRouter.post("/unfollow", authMiddleware, unFollowUser);
 userRouter.get("/:id/followers", authMiddleware, getFollowUser);
 userRouter.get("/:id/following", authMiddleware, getFollowing);
+
+//Suggested User
+userRouter.get("/suggested/users", authMiddleware, getSuggestedUsers);
 
 export default userRouter;
