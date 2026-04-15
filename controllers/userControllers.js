@@ -439,7 +439,7 @@ export const getSuggestedUsers = async (req, res) => {
       _id: { $nin: excludeIds },
     })
       .select("username profileImage")
-      .limit(10);
+      .limit(20);
 
     res.status(200).json({
       success: true,
