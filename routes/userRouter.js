@@ -11,6 +11,7 @@ import {
   profileUser,
   registerUser,
   unFollowUser,
+  updateProfileData,
   uploadProfileImage,
 } from "../controllers/userControllers.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -28,6 +29,7 @@ userRouter.post(
   uploadCloudinary.single("profileImage"),
   uploadProfileImage,
 );
+userRouter.put("/update-profile", authMiddleware, updateProfileData);
 userRouter.get("/all", allUser);
 
 //Follow Routes

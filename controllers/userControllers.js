@@ -436,7 +436,7 @@ export const getSuggestedUsers = async (req, res) => {
     const excludeIds = [currentUserId, ...(req.user?.following || [])];
 
     const suggestedUsers = await User.find({
-      _id: { $nin: excludeIds }
+      _id: { $nin: excludeIds },
     })
       .select("username profileImage")
       .limit(10);
@@ -454,3 +454,84 @@ export const getSuggestedUsers = async (req, res) => {
   }
 };
 
+// Update User Profile Info
+export const updateProfileData = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const allowedFields = [
+      "username",
+      "email",
+      "fullname",
+      "phone",
+      "bio",
+      "status",
+      "gender",
+      "education",
+      "job",
+      "website",
+    ];
+
+    const updateData = {};
+
+    // pick only allowed fields
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    // ✅ Enum validation
+    if (
+      updateData.status &&
+      !["single", "married", "divorce", "widow"].includes(updateData.status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
+    if (
+      updateData.gender &&
+      !["male", "female", "others"].includes(updateData.gender)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid gender value",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
