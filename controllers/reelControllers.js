@@ -125,6 +125,7 @@ export const toggleLikeReel = async (req, res) => {
         message: "Reel liked successfully",
         likesCount: reel.likes.length,
         likes: reel.likes,
+        reel,
       });
     } else {
       reel.likes.splice(index, 1);
@@ -134,6 +135,7 @@ export const toggleLikeReel = async (req, res) => {
         message: "Reel unliked successfully",
         likesCount: reel.likes.length,
         likes: reel.likes,
+        reel,
       });
     }
   } catch (error) {
