@@ -9,6 +9,7 @@ import postRouter from "./routes/postRouter.js";
 import reelRouter from "./routes/reelRouter.js";
 import storyRouter from "./routes/storyRoutes.js";
 import connectDB from "./config/connectDB.js";
+import messageRouter from "./routes/messageRouter.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ app.use("/api/v1/user", userRouter);
 app.use("/api/v1/post", postRouter);
 app.use("/api/v1/reel", reelRouter);
 app.use("/api/v1/story", storyRouter);
+app.use("/api/v1/messages", messageRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello FeedFlow Server");
