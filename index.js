@@ -10,8 +10,9 @@ import reelRouter from "./routes/reelRouter.js";
 import storyRouter from "./routes/storyRoutes.js";
 import connectDB from "./config/connectDB.js";
 import messageRouter from "./routes/messageRouter.js";
+import { app, server } from "./socket/socket.js";
 
-const app = express();
+// const app = express();
 const PORT = process.env.PORT || 3000;
 
 const corsInstance = {
@@ -25,6 +26,8 @@ app.use(cors(corsInstance));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 //ROUTERS
@@ -38,7 +41,7 @@ app.get("/", (req, res) => {
   res.send("Hello FeedFlow Server");
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   connectDB();
   console.log(`Server is running on port : ${PORT}`);
 });

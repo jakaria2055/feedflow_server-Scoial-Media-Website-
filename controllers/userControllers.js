@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 //REGISTER USER
 export const registerUser = async (req, res) => {
@@ -268,8 +269,14 @@ export const getUserById = async (req, res) => {
 // Follow User
 export const followUser = async (req, res) => {
   try {
+
     const userId = req.user?._id; // who follows
     const { targetId } = req.body; // whom to follow
+
+      // Add this guard
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: "targetId is required" });
+    }
 
     if (userId.toString() === targetId.toString()) {
       return res.status(400).json({
@@ -293,11 +300,30 @@ export const followUser = async (req, res) => {
       user.following.push(targetId);
     }
     if (!targetUser.followers.includes(userId)) {
-      targetUser.followers.push(userId); // ✅ fixed
+      targetUser.followers.push(userId);
     }
 
     await user.save();
     await targetUser.save();
+
+    //Socket Notification for follow
+    const follower = await User.findById(userId).select(
+      "username profileImage",
+    );
+
+    const receiverSocketId = getReceiverSocketId(targetId);
+    //Follow notification
+    if (receiverSocketId) {
+      const notification = {
+        type: "follow",
+        userId: userId,
+        targetUserId: targetId,
+        userDetails: follower,
+        message: `${follower.username} starting follow you`,
+        createdAt: new Date(),
+      };
+      io.to(receiverSocketId).emit("notification", notification);
+    }
 
     // Return updated lists
     return res.status(200).json({
@@ -351,6 +377,25 @@ export const unFollowUser = async (req, res) => {
 
     await user.save();
     await targetUser.save();
+
+    //Socket Notification for unfollow
+    const unfollower = await User.findById(userId).select(
+      "username profileImage",
+    );
+
+    const receiverSocketId = getReceiverSocketId(targetId);
+    //unFollow notification
+    if (receiverSocketId) {
+      const notification = {
+        type: "unfollow",
+        userId: userId,
+        targetUserId: targetId,
+        userDetails: unfollower,
+        message: `${unfollower.username} unfollow you`,
+        createdAt: new Date(),
+      };
+      io.to(receiverSocketId).emit("notification", notification);
+    }
 
     return res.status(200).json({
       success: true,

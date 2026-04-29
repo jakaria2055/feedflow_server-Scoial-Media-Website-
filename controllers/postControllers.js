@@ -1,5 +1,6 @@
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 //Create Post
 export const createPost = async (req, res) => {
@@ -154,6 +155,9 @@ export const toggleLikePost = async (req, res) => {
       });
     }
 
+    const alreadyLiked = post.likes.some(
+      (uid) => uid.toString() === userId.toString(),
+    );
     // Check if user already liked the post
     const index = post.likes.indexOf(userId);
     if (index === -1) {
@@ -166,6 +170,29 @@ export const toggleLikePost = async (req, res) => {
           path: "comments.user",
           select: "username profileImage",
         });
+
+      //Socket Notification
+      if (post?.user?._id.toString() !== userId.toString()) {
+        const user = await User.findById(userId).select(
+          "username profileImage",
+        );
+        const receiverSocketId = getReceiverSocketId(post?.user?._id);
+
+        if (receiverSocketId) {
+          if (!alreadyLiked) {
+            //Like Notification
+            const notification = {
+              type: "like",
+              userId: userId,
+              userDetails: user,
+              postId: id,
+              message: `${user.username} liked your post`,
+              createdAt: new Date(),
+            };
+            io.to(receiverSocketId).emit("notification", notification);
+          }
+        }
+      }
       return res.status(200).json({
         success: true,
         message: "Post liked successfully",
@@ -181,6 +208,29 @@ export const toggleLikePost = async (req, res) => {
           path: "comments.user",
           select: "username profileImage",
         });
+
+      //Socket Notification
+      if (post?.user?._id.toString() !== userId.toString()) {
+        const user = await User.findById(userId).select(
+          "username profileImage",
+        );
+        const receiverSocketId = getReceiverSocketId(post?.user?._id);
+
+        if (receiverSocketId) {
+          if (alreadyLiked) {
+            //UnLike Notification
+            const notification = {
+              type: "unlike",
+              userId: userId,
+              postId: id,
+              action: "remove",
+              message: `${user.username} unliked your post`,
+              createdAt: new Date(),
+            };
+            io.to(receiverSocketId).emit("notification", notification);
+          }
+        }
+      }
       return res.status(200).json({
         success: true,
         message: "Post unliked successfully",
