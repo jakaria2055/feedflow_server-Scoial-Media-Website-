@@ -2,23 +2,50 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { getReceiverSocketId, io } from "../socket/socket.js";
 
-//Create Post
+
+// Create Post
 export const createPost = async (req, res) => {
   try {
-    const { caption, mediaType } = req.body;
+    const { caption } = req.body;
+
     const userId = req.user._id;
 
-    // Validate file upload
-    if (!req.file || !req.file.path) {
-      return res.status(400).json({
-        success: false,
-        message: "No file uploaded",
+    // TEXT POST
+    if (!req.file) {
+      if (!caption || !caption.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Caption is required for text post",
+        });
+      }
+
+      const post = await Post.create({
+        user: userId,
+        mediaType: "text",
+        caption,
+      });
+
+      const user = await User.findById(userId);
+
+      if (user) {
+        user.posts.push(post._id);
+        await user.save();
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "Text post created successfully",
+        post,
       });
     }
 
+    // IMAGE / VIDEO POST
     const mediaUrl = req.file.path;
 
-    // Create new post
+    const mediaType = req.file.mimetype.startsWith("video/")
+      ? "video"
+      : "image";
+
     const post = await Post.create({
       user: userId,
       mediaType,
@@ -27,10 +54,13 @@ export const createPost = async (req, res) => {
     });
 
     const user = await User.findById(userId);
+
     if (user) {
-      user?.posts.push(post?._id);
+      user.posts.push(post._id);
       await user.save();
     }
+
+    console.log("POST FROM CONTROLLER: ", post)
 
     return res.status(201).json({
       success: true,
@@ -38,14 +68,59 @@ export const createPost = async (req, res) => {
       post,
     });
   } catch (error) {
-    console.error("Error creating post:", error);
+    console.log("Create Post Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Server error while creating post",
-      error: error.message,
+      message: "Server Error",
     });
   }
 };
+
+//Create Post
+// export const createPost = async (req, res) => {
+//   try {
+//     const { caption, mediaType } = req.body;
+//     const userId = req.user._id;
+
+//     // Validate file upload
+//     if (!req.file || !req.file.path) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "No file uploaded",
+//       });
+//     }
+
+//     const mediaUrl = req.file.path;
+
+//     // Create new post
+//     const post = await Post.create({
+//       user: userId,
+//       mediaType,
+//       mediaUrl,
+//       caption,
+//     });
+
+//     const user = await User.findById(userId);
+//     if (user) {
+//       user?.posts.push(post?._id);
+//       await user.save();
+//     }
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Post created successfully",
+//       post,
+//     });
+//   } catch (error) {
+//     console.error("Error creating post:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error while creating post",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // Get all posts
 export const getAllPosts = async (req, res) => {
@@ -253,8 +328,9 @@ export const addCommentPost = async (req, res) => {
   try {
     const { text } = req.body;
     const userId = req.user._id;
+    const postId = req.params.id;
 
-    // Validate comment text
+    // Validate comment
     if (!text || text.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -263,7 +339,8 @@ export const addCommentPost = async (req, res) => {
     }
 
     // Find post
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(postId);
+
     if (!post) {
       return res.status(404).json({
         success: false,
@@ -271,21 +348,54 @@ export const addCommentPost = async (req, res) => {
       });
     }
 
-    // Create comment object
+    // Create comment
     const comment = {
       user: userId,
-      text,
+      text: text.trim(),
       createdAt: new Date(),
     };
 
-    // Push comment to post
+    // Add comment
     post.comments.push(comment);
+
     await post.save();
 
-    // Re-fetch post with populated comments
+    // Populate updated post
     const updatedPost = await Post.findById(post._id)
       .populate("user", "username profileImage")
       .populate("comments.user", "username profileImage");
+
+    // =========================
+    // SOCKET NOTIFICATION
+    // =========================
+
+    // Don't notify own post
+    if (post.user.toString() !== userId.toString()) {
+      const user = await User.findById(userId).select(
+        "username profileImage",
+      );
+
+      const receiverSocketId = getReceiverSocketId(
+        post.user.toString(),
+      );
+
+      if (receiverSocketId) {
+        const notification = {
+          type: "comment",
+          userId: userId,
+          userDetails: user,
+          postId: postId,
+          message: `${user.username} commented on your post`,
+          createdAt: new Date(),
+          read: false,
+        };
+
+        io.to(receiverSocketId).emit(
+          "notification",
+          notification,
+        );
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -295,6 +405,7 @@ export const addCommentPost = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding comment:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error while adding comment",
@@ -358,3 +469,5 @@ export const toggleSavedPost = async (req, res) => {
     });
   }
 };
+
+
