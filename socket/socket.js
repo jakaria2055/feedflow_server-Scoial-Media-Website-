@@ -7,8 +7,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    // origin: ["http://localhost:5173"],
-    origin: ["https://feedflow-app-social-media-website.vercel.app"],
+    origin: [
+      // "http://localhost:5174",
+      "https://feedflow-app-social-media-website.vercel.app",
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   },
@@ -18,8 +20,6 @@ export const getReceiverSocketId = (userId) => {
   return onlineUsersMap[userId];
 };
 
-
-
 //Store Online Users userId = socketId
 let onlineUsersMap = {};
 io.on("connection", (socket) => {
@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
 
   //Get userId from query and params
   const userId = socket.handshake.query.userId;
-  if(userId){
+  if (userId) {
     onlineUsersMap[userId] = socket.id;
     console.log(`Connected User ID: ${userId}, SocketID: ${socket.id}`);
   }
@@ -38,11 +38,9 @@ io.on("connection", (socket) => {
   //Handle Disconnected User
   socket.on("disconnect", () => {
     console.log("User Disconnected: ", socket.id);
-    delete onlineUsersMap[userId]
+    delete onlineUsersMap[userId];
     io.emit("getOnlineUsers", Object.keys(onlineUsersMap));
   });
 });
 
-
-export {app, server, io}
-
+export { app, server, io };

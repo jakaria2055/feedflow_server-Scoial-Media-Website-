@@ -16,11 +16,14 @@ import { app, server } from "./socket/socket.js";
 const PORT = process.env.PORT || 3000;
 
 const corsInstance = {
-  // origin: ["http://localhost:5173"],
-  origin: ["https://feedflow-app-social-media-website.vercel.app"],
+  origin: [
+    // "http://localhost:5174",
+    "https://feedflow-app-social-media-website.vercel.app"
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
 };
+
 
 //MIDLLEWARES
 app.use(cors(corsInstance));
