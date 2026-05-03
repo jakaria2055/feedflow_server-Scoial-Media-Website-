@@ -42,9 +42,9 @@ export const registerUser = async (req, res) => {
     // Cookie options
     const options = {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-      secure: false, // change to true in production with HTTPS
-      sameSite: "Strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     };
 
     // Exclude password from response
@@ -93,11 +93,17 @@ export const loginUser = async (req, res) => {
     });
 
     // Cookie options
+    // const options = {
+    //   httpOnly: true,
+    //   maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+    //   secure: false, // set true in production with HTTPS
+    //   sameSite: "Strict",
+    // };
     const options = {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-      secure: false, // set true in production with HTTPS
-      sameSite: "Strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     };
 
     // Exclude password from response
@@ -119,25 +125,60 @@ export const loginUser = async (req, res) => {
 //LOGOUT
 export const logoutUser = async (req, res) => {
   try {
-    // Clear the token cookie
-    res.clearCookie("token", {
+    const options = {
       httpOnly: true,
-      secure: true,
-    });
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
 
-    return res.status(200).json({
-      success: true,
-      message: "Logged out successfully.",
-    });
+    return res
+      .status(200)
+      .clearCookie("token", {
+        ...options,
+        expires: new Date(0),
+      })
+      .json({
+        success: true,
+        message: "Logged out successfully.",
+      });
   } catch (error) {
     console.error("Error logging out:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error." });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
   }
 };
 
+// export const logoutUser = async (req, res) => {
+//   try {
+//     const options = {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production",
+//       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+//     };
+
+//     // Clear the token cookie
+//     return res.status(200).clearCookie("token", options).json({
+//       success: true,
+//       message: "Logged out successfully.",
+//     });
+//   } catch (error) {
+//     console.error("Error logging out:", error);
+//     return res
+//       .status(500)
+//       .json({ success: false, message: "Internal server error." });
+//   }
+// };
+
+// res.clearCookie("token", {
+//   httpOnly: true,
+//   secure: true,
+// });
+
 // Get profile of logged-in user
+
 export const profileUser = async (req, res) => {
   try {
     const user = req.user; // req.user should be set by JWT middleware
@@ -269,13 +310,14 @@ export const getUserById = async (req, res) => {
 // Follow User
 export const followUser = async (req, res) => {
   try {
-
     const userId = req.user?._id; // who follows
     const { targetId } = req.body; // whom to follow
 
-      // Add this guard
+    // Add this guard
     if (!targetId) {
-      return res.status(400).json({ success: false, message: "targetId is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "targetId is required" });
     }
 
     if (userId.toString() === targetId.toString()) {
